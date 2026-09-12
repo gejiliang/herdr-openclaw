@@ -56,6 +56,22 @@ const REAL_BUSY = `
 ────────────────────────────────────────────────────────────────────────
 `;
 
+// 真机采样五：OpenClaw 2026.9.4 on Linux（herdr 0.9.0），`herdr pane read
+// --source detection`，2026-09-12。两处新形态：
+// 1. 模型段是裸模型名（gpt-5.6-sol），没有 provider 前缀、没有 `/` —— 老代码
+//    只认带 `/` 的段，model 会丢。它前面还排了个冒号控制位 deliver:off，
+//    那个绝不能误认成模型（所以按 `:` 排除）；
+// 2. session id 是通道地址形式（telegram:direct:791946314），不再是 tui-<uuid>。
+//    info 行也被硬折成两行（recent-unwrapped 同样折，是 TUI 行为不是终端 wrap）。
+const REAL_2026_09 = `
+ connected | idle
+ agent main | session telegram:direct:791946314 |
+ gpt-5.6-sol | deliver:off | tokens 68k/258k (26%)
+──────────────────────────────────────────────────────────
+
+──────────────────────────────────────────────────────────
+`;
+
 const withActivity = (a) => REAL_IDLE.replace("| idle", `| ${a}`);
 
 test("解析真机 idle 采样", () => {
@@ -105,6 +121,25 @@ test("token 计数为 ? 时侧栏照常显示，不显示百分比", () => {
     model: "fast-model-v1",
     ctx: "?/1.0m",
     think: "high",
+  });
+});
+
+test("2026.9.x：裸模型名 + 冒号控制位 + 通道式 session id", () => {
+  const s = parseOpenClawStatus(REAL_2026_09);
+  assert.equal(s.matched, true);
+  assert.equal(s.state, "idle");
+  assert.equal(s.conn, "connected");
+  assert.equal(s.agentName, "main");
+  assert.equal(s.sessionId, "telegram:direct:791946314");
+  // 模型段没有 `/`（gpt-5.6-sol）也要认出来；deliver:off 这种冒号段不能当模型。
+  assert.equal(s.model, "gpt-5.6-sol");
+  assert.equal(s.tokens, "68k/258k");
+  assert.equal(s.tokenPct, 26);
+  assert.deepEqual(buildTokens(s), {
+    run: "",
+    model: "gpt-5.6-sol",
+    ctx: "68k/258k 26%",
+    think: "",
   });
 });
 
