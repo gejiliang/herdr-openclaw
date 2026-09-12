@@ -16,7 +16,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { listPanes, isOpenClawPane, releaseAgent } from "../lib/herdr.mjs";
-import { logFile, pidFile, stateDir } from "../lib/paths.mjs";
+import { logFile, pidFile, probeEnv, stateDir, watcherEnv } from "../lib/paths.mjs";
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const STATE_DIR = stateDir();
@@ -38,7 +38,10 @@ function alive(pid) {
  * 就会把那个无辜进程 SIGTERM 掉。校验命令行里有没有 watch.mjs。
  */
 function isOurWatcher(pid) {
-  const r = spawnSync("ps", ["-p", String(pid), "-o", "command="], { encoding: "utf8" });
+  const r = spawnSync("ps", ["-p", String(pid), "-o", "command="], {
+    encoding: "utf8",
+    env: probeEnv(),
+  });
   if (r.status !== 0) return false;
   return /watch\.mjs/.test(r.stdout ?? "");
 }
@@ -48,7 +51,7 @@ function waitForExit(pid, timeoutMs = 5000) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     if (!alive(pid)) return true;
-    spawnSync("sleep", ["0.1"]);
+    spawnSync("sleep", ["0.1"], { env: probeEnv() });
   }
   return !alive(pid);
 }
@@ -111,6 +114,7 @@ const child = spawn(process.execPath, [join(ROOT, "bin", "watch.mjs"), "--verbos
   cwd: ROOT,
   detached: true,
   stdio: ["ignore", "ignore", logFd],
+  env: watcherEnv(),
 });
 child.unref();
 writeFileSync(PID_FILE, String(child.pid));

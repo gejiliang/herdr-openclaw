@@ -5,7 +5,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 
 import { listPanes } from "../lib/herdr.mjs";
-import { pidFile, stateDir } from "../lib/paths.mjs";
+import { pidFile, probeEnv, stateDir } from "../lib/paths.mjs";
 
 const PID_FILE = pidFile();
 
@@ -17,7 +17,10 @@ if (existsSync(PID_FILE)) {
     process.kill(pid, 0);
     // 活着还不够：watcher 异常死亡后 pid 会被回收给无关进程，
     // 只判活会把"别人的进程"报成"watcher 在跑"。校验命令行。
-    const ps = spawnSync("ps", ["-p", String(pid), "-o", "command="], { encoding: "utf8" });
+    const ps = spawnSync("ps", ["-p", String(pid), "-o", "command="], {
+      encoding: "utf8",
+      env: probeEnv(),
+    });
     running = ps.status === 0 && /watch\.mjs/.test(ps.stdout ?? "");
   } catch {
     running = false;
