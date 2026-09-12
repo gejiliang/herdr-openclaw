@@ -21,11 +21,14 @@ verified — is in [`docs/findings-2026-08-12.md`](docs/findings-2026-08-12.md).
 
 ## Requirements
 
-- herdr **0.8.0+** (`pane report-agent` and friends)
-- OpenClaw **2026.7.x** (status-line format; see [Upstream drift](#upstream-drift))
+- herdr **0.8.0+** (`pane report-agent` and friends); verified on **0.9.0** (Linux) where
+  `pane process-info` reports `argv` / `cmdline` / `name` instead of the 0.8.0 `argv0`
+- OpenClaw **2026.7.x** (status-line format; see [Upstream drift](#upstream-drift));
+  verified on **2026.9.4**
 - Node **20+**
-- macOS. Nothing in the code is macOS-specific — paths are XDG, signals are POSIX — but
-  Linux is untested, so `platforms` in the manifest is deliberately conservative.
+- Linux and macOS (Linux verified on herdr 0.9.0 + OpenClaw 2026.9.4; nothing is
+  macOS-specific — paths are XDG, signals are POSIX). `platforms` in the manifest
+  now includes both.
 
 ## Install
 
@@ -216,10 +219,20 @@ node bin/watch.mjs --once --verbose
 and confirm three things: the pane is discovered, its state is parsed, and
 `herdr agent get <pane>` shows `display_agent` and `tokens`.
 
+Known drift handled since the initial release (see [`docs/findings-2026-08-12.md`](docs/findings-2026-08-12.md)):
+
+- **herdr 0.9.0** dropped `argv0` from `pane process-info` foreground processes; detection
+  now matches on `argv` / `cmdline` / `name` / `argv0` alike.
+- **OpenClaw 2026.9.x** renders a bare model name (`gpt-5.6-sol`) without the
+  provider-slash prefix, and can show a colon control segment (`deliver:off`) in the info
+  line. The parser now also treats the first non-colon, non-think/tokens segment as the
+  model, and session ids may be channel addresses (`telegram:direct:<id>`) rather than
+  `tui-<uuid>`.
+
 ## Development
 
 ```sh
-npm test                              # 55 tests, all pure functions
+npm test                              # 56 tests, all pure functions
 node bin/watch.mjs --once --verbose   # one pass, shows what it found and reported
 ```
 

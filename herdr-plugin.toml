@@ -11,7 +11,7 @@ description = "Reports OpenClaw TUI panes to herdr as first-class agents."
 # 不在 schema 内的键（回显里根本没有它们），留着只会让人以为它们生效了。
 # pane.report_agent / release-agent / report-metadata 全套在 0.8.0 的 CLI 上验证过。
 min_herdr_version = "0.8.0"
-platforms = ["macos"]
+platforms = ["linux", "macos"]
 
 # 只做对账 + 把 watcher 甩到后台，必须立刻返回。
 [[startup]]
