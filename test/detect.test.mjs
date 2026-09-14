@@ -295,6 +295,66 @@ test("穷举出来的 activity 词表每个都有确定归属", () => {
 });
 
 // ---------------------------------------------------------------------------
+// openclaw 2026.8.x 回归。真机采样：openclaw 2026.8.2 (0965053)、herdr 0.9.0，
+// `herdr pane read --source detection`，2026-09-14。
+// 相对 2026.7 的三处变化：session 段带来源括号、model 段丢了 provider 前缀、
+// think 段换成了 deliver 开关段。
+// ---------------------------------------------------------------------------
+const REAL_IDLE_2026_8 = `
+ gateway connected | idle
+ agent main | session main (telegram:1433152903) | claude-opus-5 minimal | deliver:off | tokens 80k/1.0m (8%)
+──────────────────────────────────────────────────────────────────────────
+
+──────────────────────────────────────────────────────────────────────────
+`;
+
+test("2026.8.x：session 段带来源括号时，整条 info 行仍要解出来", () => {
+  const r = parseOpenClawStatus(REAL_IDLE_2026_8);
+  assert.equal(r.state, "idle");
+  assert.equal(r.agentName, "main");
+  // 括号里的来源是显示信息，不属于会话键。
+  assert.equal(r.sessionId, "main");
+  assert.equal(r.tokens, "80k/1.0m");
+  assert.equal(r.tokenPct, 8);
+});
+
+test("2026.8.x：model 段不带 provider 前缀也要认出来", () => {
+  const r = parseOpenClawStatus(REAL_IDLE_2026_8);
+  assert.equal(r.model, "claude-opus-5 minimal");
+});
+
+test("2026.8.x：deliver:off 这类开关段不能被当成 model", () => {
+  const r = parseOpenClawStatus(`
+ gateway connected | idle
+ agent main | session s1 | deliver:off | tokens 1k/1.0m (1%)
+`);
+  assert.equal(r.model, null);
+  assert.equal(r.tokens, "1k/1.0m");
+});
+
+test("2026.7 的老格式必须继续解出来（不能为了新格式把老的弄坏）", () => {
+  const r = parseOpenClawStatus(REAL_IDLE);
+  assert.equal(r.model, "claude-cli/claude-opus-5");
+  assert.equal(r.think, "medium");
+  assert.equal(r.sessionId, "tui-4f2a91c7-0b3e-4d15-8a6f-2c9e7b148d03");
+});
+
+test("2026.8.x 新增的忙碌态走 busy 行形状，报 working", () => {
+  // finishing context / starting up 都在 TUI_BUSY_ACTIVITY_STATUSES 里，
+  // 所以 TUI 用 busy 行渲染它们 —— 靠形状认，不靠词表。
+  assert.equal(parseOpenClawStatus(" finishing context • 12s | gateway connected").state, "working");
+  assert.equal(parseOpenClawStatus(" starting up • 1s | gateway connected").state, "working");
+});
+
+test("2026.8.x 新增的非忙碌态不能落到 unknown", () => {
+  // Ctrl+O 切换工具展开会把 activityStatus 写成 tools expanded/collapsed；
+  // abort failed 同理，都是提示而非状态，报 unknown 会让编排以为面板失联。
+  assert.equal(parseOpenClawStatus(" gateway connected | tools expanded").state, "idle");
+  assert.equal(parseOpenClawStatus(" gateway connected | tools collapsed").state, "idle");
+  assert.equal(parseOpenClawStatus(" gateway connected | abort failed").state, "idle");
+});
+
+// ---------------------------------------------------------------------------
 // process-info 形状回归。herdr 0.8.0 -> 0.9.0 把 argv0 换成了 name/argv[]，
 // 只认 argv0 会让 isOpenClawPane 永远返回 false，插件静默不工作。
 // ---------------------------------------------------------------------------
