@@ -7,6 +7,7 @@ import {
   buildTokens,
   parseOpenClawStatus,
 } from "../lib/detect.mjs";
+import { matchesOpenClawProcess } from "../lib/herdr.mjs";
 
 // 真机采样：openclaw 2026.7.1-2，`herdr pane read --source detection`，2026-08-12。
 const REAL_IDLE = `
@@ -291,4 +292,29 @@ test("穷举出来的 activity 词表每个都有确定归属", () => {
     const s = parseOpenClawStatus(withActivity(a));
     assert.ok(["idle", "working", "blocked", "unknown"].includes(s.state), a);
   }
+});
+
+// ---------------------------------------------------------------------------
+// process-info 形状回归。herdr 0.8.0 -> 0.9.0 把 argv0 换成了 name/argv[]，
+// 只认 argv0 会让 isOpenClawPane 永远返回 false，插件静默不工作。
+// ---------------------------------------------------------------------------
+test("herdr 0.9.0 的 process-info 形状（name/argv，无 argv0）要认出来", () => {
+  // 真机采样：herdr 0.9.0 `pane process-info --pane w1:p3`，2026-09-14。
+  const procs = [
+    { argv: ["openclaw-tui"], cmdline: "openclaw-tui", cwd: "/home/ubuntu", name: "openclaw-tui", pid: 1580545 },
+  ];
+  assert.equal(matchesOpenClawProcess(procs), true);
+});
+
+test("herdr 0.8.0 的 argv0 形状要继续认", () => {
+  assert.equal(matchesOpenClawProcess([{ argv0: "openclaw-tui" }]), true);
+  assert.equal(matchesOpenClawProcess([{ argv0: "/usr/local/bin/openclaw" }]), true);
+});
+
+test("不是 OpenClaw 的前台进程不能误判", () => {
+  assert.equal(matchesOpenClawProcess([{ name: "bash", argv: ["bash"] }]), false);
+  // cmdline 里出现 openclaw 不算数：`vim openclaw` 不是 TUI。
+  assert.equal(matchesOpenClawProcess([{ name: "vim", argv: ["vim", "openclaw"], cmdline: "vim openclaw" }]), false);
+  assert.equal(matchesOpenClawProcess([]), false);
+  assert.equal(matchesOpenClawProcess(undefined), false);
 });
