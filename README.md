@@ -21,11 +21,12 @@ verified — is in [`docs/findings-2026-08-12.md`](docs/findings-2026-08-12.md).
 
 ## Requirements
 
-- herdr **0.8.0+** (`pane report-agent` and friends)
-- OpenClaw **2026.7.x** (status-line format; see [Upstream drift](#upstream-drift))
+- herdr **0.8.0+**, including **0.9.0** (`pane report-agent` and friends)
+- OpenClaw **2026.7.x** or **2026.8.x** (status-line format; see [Upstream drift](#upstream-drift))
 - Node **20+**
-- macOS. Nothing in the code is macOS-specific — paths are XDG, signals are POSIX — but
-  Linux is untested, so `platforms` in the manifest is deliberately conservative.
+- macOS and Linux. Nothing in the code is macOS-specific — paths are XDG, signals are
+  POSIX. Linux is now covered: verified on Ubuntu 24.04 with herdr 0.9.0 and OpenClaw
+  2026.8.2, so `linux` is in `platforms`.
 
 ## Install
 
